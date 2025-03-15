@@ -125,6 +125,22 @@ void loop() {
     float phi = atan2(2.0*(qw*qx+qy*qz),1.0-2.0*(qx*qx+qy*qy))*180.0/PI;
 
 
+Serial.print(Vc);
+  Serial.print("\t");
+Serial.print(AoA);
+  Serial.print("\t");
+Serial.print(B);
+  Serial.print("\t");
+Serial.print(Q);
+  Serial.print("\t");
+Serial.print(P);
+  Serial.print("\t");
+Serial.print(theta);
+  Serial.print("\t");
+Serial.print(psi);
+  Serial.print("\t");
+Serial.print(phi);
 
+  delay(500);
 
 }
