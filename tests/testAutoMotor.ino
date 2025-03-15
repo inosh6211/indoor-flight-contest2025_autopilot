@@ -82,81 +82,6 @@ void setup() {
   pinMode(pin_num_LED_L,OUTPUT);
 }
 
-void pulseISR_de(){
-  static unsigned long endTime_de=0;
-  unsigned long currentTime=micros();
-  if(digitalRead(pin_num_SVe_R)==HIGH){
-    startTime_de = currentTime;
-    Period_de = currentTime-endTime_de;
-    endTime_de = currentTime;
-  }else{
-    PW_de = micros()-startTime_de;
-  }
-
-  if(Period_de>0){
-    Duty_de=(float)PW_de/(float)Period_de;
-  }else{
-    Duty_de=0.0;
-  }
-}
-
-void pulseISR_da(){
-  static unsigned long endTime_da=0;
-  unsigned long currentTime=micros();
-  if(digitalRead(pin_num_SVa_R)==HIGH){
-    startTime_da = currentTime;
-    Period_da = currentTime-endTime_da;
-    endTime_da = currentTime;
-  }else{
-    PW_da = micros()-startTime_da;
-  }
-
-  if(Period_da>0){
-    Duty_da=(float)PW_da/(float)Period_da;
-  }else{
-    Duty_da=0.0;
-  }
-}
-
-void pulseISR_MT(){
-  static unsigned long endTime_MT=0;
-  unsigned long currentTime=micros();
-  if(digitalRead(pin_num_MT_R)==HIGH){
-    startTime_MT = currentTime;
-    Period_MT = currentTime-endTime_MT;
-    endTime_MT = currentTime;
-  }else{
-    PW_MT = micros()-startTime_MT;
-  }
-
-  if(Period_de>0){
-    Duty_MT=(float)PW_MT/(float)Period_MT;
-  }else{
-    Duty_MT=0.0;
-  }
-}
-
-float de(float AoA,float Q){//control law of elevator
-  float Kp=1;
-  float Kd=1;
-  float AoA_tar=0;
-  float Cm_tar=0.00961;
-  float Cm_de_tar=0.327;
-  float de_0=Cm_tar/Cm_de_tar;
-
-  float de=Kp*(AoA_tar-AoA)-Kd*Q+de_0;
-  return de;
-}
-
-float da(float phi,float P){//control law of aileron
-  float Kp=1;
-  float Kd=1;
-  float phi_tar=8;
-
-  float da=Kp*(phi_tar-phi)-Kd*P;
-  return da;
-}
-
 float thrust(float T,float Vc,float AoA,float B,float theta,float psi,float phi,float Twb){//control law of motor
   float Kp=1;
   float Kd=1;
@@ -284,12 +209,6 @@ void loop() {
     float psi = atan2(2.0*(qw*qz+qx*qy),1.0-2.0*(qy*qy+qz*qz))*180.0/PI;
     float phi = atan2(2.0*(qw*qx+qy*qz),1.0-2.0*(qx*qx+qy*qy))*180.0/PI;
 
-    //servo
-    double de = de(AoA,Q);
-    double da = da(phi,P);
-    SVe.write(de);
-    SVal.write(da);
-    SVar.write(-da);
 
     //motor
     double T = thrust(T,Vc,AoA,B,theta,psi,phi,Twb);
@@ -303,15 +222,5 @@ void loop() {
 ////////////////////////////////////////////////////////////////////
 
   }else{
-  //proportional control
-    double de = (deg_max_sg90-deg_min_sg90)*Duty_de+deg_min_sg90;
-    double da = (deg_max_sg90-deg_min_sg90)*Duty_da+deg_min_sg90;
-
-//servo
-    SVe.write(de);
-    SVal.write(da);
-    SVar.write(-da);
-//motor
-    analogWrite(pin_num_MT,Duty_MT*255);
   }
 }
