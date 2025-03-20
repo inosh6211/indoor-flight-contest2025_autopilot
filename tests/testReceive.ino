@@ -21,10 +21,10 @@ int deg_max_sg90 = 180;
 
 //motor
 int pin_num_MT = 6;
-double Duty_max_MT =;
-double Duty_min_MT =;
-double thrust_max =;
-double thrust_min =;
+double Duty_max_MT =0;
+double Duty_min_MT =0;
+double thrust_max =0;
+double thrust_min =0;
 double T = 0;
 
 //switch of autopilot
