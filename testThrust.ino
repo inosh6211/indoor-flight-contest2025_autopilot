@@ -1,27 +1,24 @@
-const int led_pin = 13;//LEDを接続するピン
-const int vol_pin = 0;//圧力センサ用アナログピン
+const int fsrPin = A0; // FSR 406 の接続ピン
+const float R1 = 10000.0; // 分圧用の固定抵抗（10kΩ）
+const float Vcc = 5.0; // 電源電圧（5V）
 
 void setup() {
-// シリアルモニターに映す為。
   Serial.begin(9600);
-  //led_pinを出力ピンに設定
-  pinMode(led_pin,OUTPUT);
 }
-// void loopの{}で囲われた箇所は、電源オフまたはリセットボタンを押さない限り永久に繰り返されます
+
 void loop() {
-// アナログピンの入力値を読み込み。
-  int sensorValue = analogRead(vol_pin);
-  // 読み込んだ状態をシリアルモニターに表示する文。
-  Serial.println(sensorValue);
-  //見やすくするため少し遅延。
-  delay(100);
- 
-  //センサーの値が500未満になったらLED点灯。そうでなければ消灯。
-  //センサーによって感度が違うので500という数字はお好みで。
-  if(sensorValue < 500){
-    digitalWrite(led_pin,HIGH);
-  }
-  else{
-    digitalWrite(led_pin,LOW);
-    }
+  int adcValue = analogRead(fsrPin);
+  float Vout = (adcValue / 1023.0) * Vcc; // ADC値を電圧に変換
+  float Rfsr = (Vout == 0) ? 1e6 : (R1 * (Vcc - Vout) / Vout); // FSRの抵抗値を計算
+
+  // 抵抗値を力（N）に変換
+  float force = 2.482e6 * pow(Rfsr, -1.4);
+
+  Serial.print("ADC: "); Serial.print(adcValue);
+  Serial.print(", Vout: "); Serial.print(Vout, 3);
+  Serial.print(", R_FSR: "); Serial.print(Rfsr, 3);
+  Serial.print(", Force: "); Serial.print(force, 3);
+  Serial.println(" N");
+
+  delay(500);
 }
