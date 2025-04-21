@@ -1,16 +1,17 @@
-//#include<Servo.h>
 #include<Wire.h>
 #include<Adafruit_Sensor.h>
 #include<Adafruit_BNO055.h>
 #include<MadgwickAHRS.h>
 
+//#include<esp_task_wdt.h>
+
 //servo
-int pin_num_SVe = 9;
-int pin_num_SVal = 10;
-int pin_num_SVar = 11;
+int pin_num_SVe = 12;
+int pin_num_SVal = 13;
+int pin_num_SVar = 14;
 
 //motor
-int pin_num_MT = 6;
+int pin_num_MT = 15;
 double Duty_max_MT = 1;
 double Duty_min_MT = 0;
 double thrust_max = 20;
@@ -18,16 +19,16 @@ double thrust_min = 0;
 double T = 0;
 
 //switch of autopilot
-int pin_num_switch_h = 2;
+int pin_num_switch_h = 26;
 volatile uint32_t startTime_S=0;
 volatile uint32_t PW_S=0;
 volatile uint32_t Period_S=0; 
 volatile float Duty_S=0.0;
 
 //reciever
-int pin_num_SVe_R = 3;
-int pin_num_SVa_R = 1;
-int pin_num_MT_R = 4;
+int pin_num_SVe_R = 33;
+int pin_num_SVa_R = 32;
+int pin_num_MT_R = 25;
 volatile uint32_t startTime_de=0,startTime_da=0,startTime_MT=0;
 volatile uint32_t PW_de=0,PW_da=0,PW_MT=0;
 volatile uint32_t Period_de=0,Period_da=0,Period_MT=0; 
@@ -37,12 +38,17 @@ volatile float Duty_de=0.0,Duty_da=0.0,Duty_MT=0.0;
 int pin_num_LED_H = 8;
 
 //nine axis sensor
-Adafruit_BNO055 bno = Adafruit_BNO055(55,0x28);
+Adafruit_BNO055 bno = Adafruit_BNO055(55,0x29);
 Madgwick Madgwick;
 unsigned long previousTime = 0;
 
 void setup() {
   // put your setup code here, to run once:
+//  disableCore0WDT();  // Core 0 のWDT無効化
+//  disableCore1WDT();  // Core 1 のWDT無効化
+
+
+
   //servo
   pinMode(pin_num_SVal,OUTPUT);
   pinMode(pin_num_SVar,OUTPUT);
@@ -64,12 +70,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(pin_num_MT_R),pulseISR_MT,CHANGE);
 
   //nine axis sensor
+  Wire.begin(21, 22);  // SDA=21, SCL=22 に明示指定
   Serial.begin(115200);
-  Madgwick.begin(100.0f);
+  bno.begin();
   if (!bno.begin()) {
     Serial.println("BNO055 not detected. Check wiring!");
     while (1);
   }
+  Madgwick.begin(100.0f);
 
   //LED
   pinMode(pin_num_LED_H,OUTPUT);
@@ -85,6 +93,8 @@ void pulseISR_S(){
   }else{
     PW_S = currentTime-startTime_S;
   }
+
+delay(10);///////////////////////
 }
 
 void pulseISR_de(){
@@ -97,30 +107,36 @@ void pulseISR_de(){
   }else{
     PW_de = currentTime-startTime_de;
   }
+
+delay(10);///////////////////////
 }
 
 void pulseISR_da(){
   static uint32_t endTime_da=0;
   uint32_t currentTime=micros();
-  if(digitalRead(pin_num_SVe_R)==HIGH){
+  if(digitalRead(pin_num_SVa_R)==HIGH){
     startTime_da = currentTime;
     Period_da = currentTime-endTime_da;
     endTime_da = currentTime;
   }else{
     PW_da = currentTime-startTime_da;
   }
+
+  delay(10);///////////////////////
 }
 
 void pulseISR_MT(){
   static uint32_t endTime_MT=0;
   uint32_t currentTime=micros();
-  if(digitalRead(pin_num_SVe_R)==HIGH){
+  if(digitalRead(pin_num_MT_R)==HIGH){
     startTime_MT = currentTime;
     Period_MT = currentTime-endTime_MT;
     endTime_MT = currentTime;
   }else{
     PW_MT = currentTime-startTime_MT;
   }
+
+  delay(10);///////////////////////
 }
 
 float de(float AoA, float Q){
@@ -234,6 +250,7 @@ float thrust(float T, float Vc, float AoA, float B, float theta, float psi, floa
 
   float thrust = Kp*(Vc_tar - Vc) - Kd*(T - T_0)/M + T_0;
   return thrust;
+
 }
 
 void loop() {
@@ -296,15 +313,15 @@ void loop() {
     double da_val = fabs(da(phi,P));
     float Duty_de_val = de_val/180;
     float Duty_da_val = da_val/180;
-    analogWrite(pin_num_SVe, 255*Duty_de_val);
-    analogWrite(pin_num_SVal, 255*Duty_da_val);
-    analogWrite(pin_num_SVar, 255*Duty_da_val);
+    ledcWrite(pin_num_SVe, 255*Duty_de_val);
+    ledcWrite(pin_num_SVal, 255*Duty_da_val);
+    ledcWrite(pin_num_SVar, 255*Duty_da_val);
 
     //motor
     double T = thrust(T,Vc,AoA,B,theta,psi,phi,Twb);
     double Duty_MT_auto = (Duty_max_MT-Duty_min_MT)/(thrust_max-thrust_min)*(T-thrust_min)+Duty_min_MT;
     Duty_MT_auto = constrain(Duty_MT_auto, 0, 1);
-    analogWrite(pin_num_MT, Duty_MT_auto*255);
+    ledcWrite(pin_num_MT, Duty_MT_auto*255);
 
 ///////////////////////////////
 
@@ -334,7 +351,7 @@ Serial.print(phi,3);
   }else{
     Duty_de=0.0;
   }
-    analogWrite(pin_num_SVe, 255*Duty_de);
+    ledcWrite(pin_num_SVe, 255*Duty_de);
   noInterrupts();
   uint32_t pulseWidth_da = PW_da;
   uint32_t period_da = Period_da;
@@ -345,8 +362,8 @@ Serial.print(phi,3);
   }else{
     Duty_da=0.0;
   }
-    analogWrite(pin_num_SVal, 255*Duty_da);
-    analogWrite(pin_num_SVar, 255*Duty_da);
+    ledcWrite(pin_num_SVal, 255*Duty_da);
+    ledcWrite(pin_num_SVar, 255*Duty_da);
 
     //motor
   noInterrupts();
@@ -359,7 +376,7 @@ Serial.print(phi,3);
   }else{
     Duty_MT=0.0;
   }
-    analogWrite(pin_num_MT, Duty_MT*255);
+    ledcWrite(pin_num_MT, Duty_MT*255);
 
 //////////////////////////
 
@@ -376,7 +393,6 @@ Serial.print(Duty_MT,3);
 
 /////////////////////////////
 Serial.println(Duty_S,3);
-delay(100);
+//delay(100);
 /////////////////////////////
-
 }
